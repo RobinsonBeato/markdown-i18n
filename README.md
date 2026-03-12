@@ -150,12 +150,10 @@ Behavior:
 
 - builds all matching `.i18n.md` files once at startup
 - watches those files for changes
+- starts watching new `.i18n.md` files created in the watched directory
+- stops watching `.i18n.md` files removed from the watched directory
 - recompiles automatically after each save
 - writes outputs without needing a manual build command
-
-Current watch limitation:
-
-- if you create a new `.i18n.md` file after watch has already started, restart the watcher so it begins tracking that file
 
 ## CLI Options
 

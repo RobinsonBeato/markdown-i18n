@@ -388,6 +388,16 @@ function getWatchFiles(inputPath) {
     .sort();
 }
 
+function diffWatchFiles(previousFiles, nextFiles) {
+  const previous = new Set(previousFiles);
+  const next = new Set(nextFiles);
+
+  return {
+    added: nextFiles.filter((filePath) => !previous.has(filePath)),
+    removed: previousFiles.filter((filePath) => !next.has(filePath))
+  };
+}
+
 function createFileOptions(baseOptions, filePath) {
   return {
     ...baseOptions,
@@ -404,21 +414,18 @@ function runWatchBuild(baseOptions, filePath) {
 }
 
 function startWatch(options) {
-  const targetFiles = getWatchFiles(options.input);
-
-  if (targetFiles.length === 0) {
-    console.log("md-i18n: no .i18n.md files found to watch");
-    return { close() {} };
-  }
-
-  for (const filePath of targetFiles) {
-    runWatchBuild(options, filePath);
-  }
-
-  const watchers = [];
   const timers = new Map();
+  const fileWatchers = new Map();
+  const directoryPath = fs.existsSync(options.input) && fs.statSync(options.input).isDirectory()
+    ? options.input
+    : null;
+  let watchedFiles = getWatchFiles(options.input);
 
-  for (const filePath of targetFiles) {
+  function watchFile(filePath) {
+    if (fileWatchers.has(filePath)) {
+      return;
+    }
+
     const watcher = fs.watch(filePath, () => {
       clearTimeout(timers.get(filePath));
       const timer = setTimeout(() => {
@@ -432,17 +439,83 @@ function startWatch(options) {
       timers.set(filePath, timer);
     });
 
-    watchers.push(watcher);
+    fileWatchers.set(filePath, watcher);
   }
 
-  console.log(`md-i18n: watching ${targetFiles.length} file(s)`);
+  function unwatchFile(filePath) {
+    clearTimeout(timers.get(filePath));
+    timers.delete(filePath);
+
+    const watcher = fileWatchers.get(filePath);
+    if (watcher) {
+      watcher.close();
+      fileWatchers.delete(filePath);
+    }
+  }
+
+  function refreshDirectoryWatch() {
+    if (!directoryPath) {
+      return;
+    }
+
+    const nextFiles = getWatchFiles(directoryPath);
+    const diff = diffWatchFiles(watchedFiles, nextFiles);
+
+    for (const filePath of diff.removed) {
+      unwatchFile(filePath);
+      console.log(`md-i18n: stopped watching ${path.basename(filePath)}`);
+    }
+
+    for (const filePath of diff.added) {
+      try {
+        runWatchBuild(options, filePath);
+        watchFile(filePath);
+        console.log(`md-i18n: started watching ${path.basename(filePath)}`);
+      } catch (error) {
+        console.error(`md-i18n: ${path.basename(filePath)} failed: ${error.message}`);
+      }
+    }
+
+    watchedFiles = nextFiles;
+  }
+
+  for (const filePath of watchedFiles) {
+    runWatchBuild(options, filePath);
+    watchFile(filePath);
+  }
+
+  if (watchedFiles.length === 0) {
+    console.log("md-i18n: no .i18n.md files found to watch");
+  }
+
+  let directoryWatcher = null;
+  let directoryTimer = null;
+
+  if (directoryPath) {
+    directoryWatcher = fs.watch(directoryPath, () => {
+      clearTimeout(directoryTimer);
+      directoryTimer = setTimeout(() => {
+        try {
+          refreshDirectoryWatch();
+        } catch (error) {
+          console.error(`md-i18n: watch refresh failed: ${error.message}`);
+        }
+      }, 50);
+    });
+  }
+
+  console.log(`md-i18n: watching ${watchedFiles.length} file(s)`);
 
   return {
     close() {
+      clearTimeout(directoryTimer);
       for (const timer of timers.values()) {
         clearTimeout(timer);
       }
-      for (const watcher of watchers) {
+      if (directoryWatcher) {
+        directoryWatcher.close();
+      }
+      for (const watcher of fileWatchers.values()) {
         watcher.close();
       }
     }
@@ -477,6 +550,7 @@ module.exports = {
   compileFile,
   compileLanguage,
   createFileOptions,
+  diffWatchFiles,
   findMissingTranslations,
   formatMissingTranslations,
   getWatchFiles,

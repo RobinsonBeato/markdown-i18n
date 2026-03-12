@@ -9,6 +9,7 @@ const {
   compileFile,
   compileLanguage,
   createFileOptions,
+  diffWatchFiles,
   findMissingTranslations,
   getWatchFiles,
   isI18nFile,
@@ -248,6 +249,28 @@ test("getWatchFiles returns a sorted list of i18n files in a directory", () => {
     path.join(tempDir, "a.i18n.md"),
     path.join(tempDir, "b.i18n.md")
   ]);
+});
+
+test("getWatchFiles accepts a single i18n file path", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "md-i18n-watch-file-"));
+  const inputPath = path.join(tempDir, "README.i18n.md");
+
+  fs.writeFileSync(inputPath, "", "utf8");
+
+  assert.deepEqual(getWatchFiles(inputPath), [inputPath]);
+});
+
+test("diffWatchFiles reports added and removed files", () => {
+  assert.deepEqual(
+    diffWatchFiles(
+      ["a.i18n.md", "b.i18n.md"],
+      ["b.i18n.md", "c.i18n.md"]
+    ),
+    {
+      added: ["c.i18n.md"],
+      removed: ["a.i18n.md"]
+    }
+  );
 });
 
 test("compileFile builds outputs directly for build mode", () => {
