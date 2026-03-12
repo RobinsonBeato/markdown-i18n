@@ -1,0 +1,43 @@
+{
+  "name": "markdown-i18n",
+  "version": "0.1.0",
+  "description": "Deterministic Markdown i18n preprocessor for multilingual README generation.",
+  "type": "commonjs",
+  "keywords": [
+    "markdown",
+    "i18n",
+    "readme",
+    "localization",
+    "documentation",
+    "cli"
+  ],
+  "files": [
+    "scripts",
+    "README.md"
+  ],
+  "bin": {
+    "md-i18n": "./scripts/build-readme.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RobinsonBeato/markdown-i18n.git"
+  },
+  "homepage": "https://github.com/RobinsonBeato/markdown-i18n#readme",
+  "bugs": {
+    "url": "https://github.com/RobinsonBeato/markdown-i18n/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node ./scripts/build-readme.js build ./src/README.i18n.md --langs en,es,pt --out-dir ./dist --default en",
+    "check": "node ./scripts/build-readme.js check ./src/README.i18n.md --langs en,es,pt",
+    "prepublishOnly": "npm test && npm run check",
+    "watch": "node ./scripts/build-readme.js watch ./src --langs en,es,pt --out-dir ./dist --default en",
+    "test": "node --test --test-isolation=none"
+  },
+  "license": "MIT"
+}
