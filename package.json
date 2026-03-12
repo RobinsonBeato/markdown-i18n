@@ -1,6 +1,6 @@
 {
   "name": "markdown-i18n",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Deterministic Markdown i18n preprocessor for multilingual README generation.",
   "type": "commonjs",
   "keywords": [
